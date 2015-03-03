@@ -104,6 +104,33 @@ HWComposer::HWComposer(
 
     bool needVSyncThread = true;
 
+    char property_aicVM_gles[PROPERTY_VALUE_MAX];
+    int is_aicVM_gles = 0;
+
+    if ((property_get("aicVM.gles", property_aicVM_gles, NULL) > 0) && (atoi(property_aicVM_gles)>0))
+        is_aicVM_gles = 1;
+
+    if (is_aicVM_gles) {
+        char property_aicVM_gles_first_try[PROPERTY_VALUE_MAX];
+        time_t aicVM_gles_first_try = 0;
+        char exec_set[64+PROPERTY_VALUE_MAX];
+        time_t current_time = time(NULL);
+
+        if (property_get("aicVM.gles.first_try", property_aicVM_gles_first_try, NULL) > 0)
+            aicVM_gles_first_try = atoi(property_aicVM_gles_first_try);
+        if (!aicVM_gles_first_try) {
+            sprintf(exec_set, "/system/bin/aicVM_setprop aicVM.gles.first_try %u", current_time);
+            system(exec_set);
+        }
+        else if ((current_time - aicVM_gles_first_try) > 60) {
+            ALOGE("Switching to AicVM Software OpenGL...");
+            system("/system/bin/aicVM_setprop aicVM.gles 0");
+            system("/system/bin/aicVM_setprop aicVM.gles.renderer 0");
+            system("/system/bin/setdpi `getprop aicVM.vbox_dpi`");
+            exit(0);
+        }
+    }
+
     // Note: some devices may insist that the FB HAL be opened before HWC.
     int fberr = loadFbHalModule();
     loadHwcModule();
@@ -121,7 +148,7 @@ HWComposer::HWComposer(
             && !mFbDev) {
         ALOGE("ERROR: failed to open framebuffer (%s), aborting",
                 strerror(-fberr));
-        abort();
+        exit(1);
     }
 
     // these display IDs are always reserved
@@ -194,6 +221,9 @@ HWComposer::HWComposer(
         // we don't have VSYNC support, we need to fake it
         mVSyncThread = new VSyncThread(*this);
     }
+
+    if (is_aicVM_gles)
+       system("/system/bin/aicVM_setprop aicVM.gles.first_try 0");
 }
 
 HWComposer::~HWComposer() {
@@ -820,6 +850,17 @@ sp<Fence> HWComposer::getLastRetireFence(int32_t id) {
     if (uint32_t(id)>31 || !mAllocatedDisplayIDs.hasBit(id))
         return Fence::NO_FENCE;
     return mDisplayData[id].lastRetireFence;
+}
+
+void HWComposer::setOrientation(int orientation) const {
+    ALOGD("%s, mFbdev=%p, mFbDev->setOrientation=%p, orientation=%d",
+	  __FUNCTION__, mFbDev, mFbDev ? mFbDev->setOrientation : NULL,
+	  orientation);
+    if (mFbDev && mFbDev->setOrientation) {
+	mFbDev->setOrientation(mFbDev, orientation);
+    } else {
+	ALOGE("%s: can't set orientation", __FUNCTION__);
+    }
 }
 
 /*
