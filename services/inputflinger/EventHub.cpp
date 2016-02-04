@@ -1183,6 +1183,12 @@ status_t EventHub::openDeviceLocked(const char *devicePath) {
         // a touch screen.
         if (test_bit(BTN_TOUCH, device->keyBitmask) || !haveGamepadButtons) {
             device->classes |= INPUT_DEVICE_CLASS_TOUCH | INPUT_DEVICE_CLASS_TOUCH_MT;
+    // Is this an "absolute mouse" (Virtualbox mouse integration)
+    } else if (test_bit(BTN_MOUSE, device->keyBitmask)
+            && test_bit(ABS_X, device->absBitmask)
+            && test_bit(ABS_Y, device->absBitmask)) {
+        device->classes |= INPUT_DEVICE_CLASS_TOUCH;
+
         }
     // Is this an old style single-touch driver?
     } else if (test_bit(BTN_TOUCH, device->keyBitmask)
