@@ -490,6 +490,17 @@ sp<Fence> HWComposer::getDisplayFence(int disp) const {
     return mDisplayData[disp].lastDisplayFence;
 }
 
+void HWComposer::setOrientation(int orientation) const {
+    ALOGD("%s, mFbdev=%p, mFbDev->setOrientation=%p, orientation=%d",
+         __FUNCTION__, mFbDev, mFbDev ? mFbDev->setOrientation : NULL,
+         orientation);
+    if (mFbDev && mFbDev->setOrientation) {
+       mFbDev->setOrientation(mFbDev, orientation);
+    } else {
+       ALOGE("%s: can't set orientation", __FUNCTION__);
+    }
+}
+
 uint32_t HWComposer::getFormat(int disp) const {
     if (uint32_t(disp)>31 || !mAllocatedDisplayIDs.hasBit(disp)) {
         return HAL_PIXEL_FORMAT_RGBA_8888;

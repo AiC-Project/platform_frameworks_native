@@ -139,6 +139,7 @@ private:
     friend class DisplayEventConnection;
     friend class Layer;
     friend class MonitoredProducer;
+    friend class DisplayDevice;
 
     // This value is specified in number of frames.  Log frame stats at most
     // every half hour.
